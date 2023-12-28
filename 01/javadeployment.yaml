@@ -37,7 +37,7 @@ spec:
  - name: apache
    nodePort: 30002 #
    port: 80 
-   targetPort: 80 
+   targetPort: 8080
    protocol: TCP
  selector:
   app: web
