@@ -9,7 +9,7 @@ metadata:
 spec:
  containers:
  - name: webcon
-   image: nishal03/javaimage:${env.BUILD_ID}
+   image: nishal03/javaimage:${buildId}
    imagePullPolicy: Always
    ports:
    - containerPort: 80
