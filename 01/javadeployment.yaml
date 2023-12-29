@@ -42,9 +42,9 @@ spec:
   type: LoadBalancer
   ports:
     - name: tomcat
-      port: 80 # service port
+      port: 80 
       protocol: TCP
-      targetPort: 8080 # container port exposed as per in image
+      targetPort: 8080 
   selector:
     apptype: web
     env: dev
