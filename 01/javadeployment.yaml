@@ -1,50 +1,50 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: webdeployment
+  name: mainserver
   namespace: devproject
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: web
+      apptype: web
       env: dev
   template:
     metadata:
-      name: webtemp
+      name: maintemplate
       labels:
-        app: web
+        apptype: web
         env: dev
     spec:
       containers:
-        - image: nishal03/javaimage:latest
-          name: webcon
-          imagePullPolicy: Always
+        - image: nishal03/javaimage:43
+          imagePullPolicy: IfNotPresent
+          name: videocon
           ports:
-            -  name: apache
-               containerPort: 8080
-               protocol: TCP
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+          # restartPolicy: Always
           resources:
             requests:
-              memory: "40Mi"
-              cpu: "40m"
+              memory: "200Mi"
+              cpu: "200m"
             limits:
-              memory: "50Mi"
-              cpu: "50m"
+              memory: "300Mi"
+              cpu: "400m"
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: websvc 
+  name: mainsvc
   namespace: devproject
 spec:
-  type: NodePort
+  type: LoadBalancer
   ports:
-    - name: apache
-      nodePort: 30002 
-      port: 80 
-      targetPort: 8080 
+    - name: tomcat
+      port: 80 # service port
       protocol: TCP
-  selector:  
-    app: web
+      targetPort: 8080 # container port exposed as per in image
+  selector:
+    apptype: web
     env: dev
