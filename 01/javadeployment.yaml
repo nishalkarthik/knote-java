@@ -17,7 +17,7 @@ spec:
         env: dev
     spec:
       containers:
-        - image: nishal03/javaimage:43
+        - image: nishal03/javaimage:latest
           imagePullPolicy: IfNotPresent
           name: videocon
           ports:
