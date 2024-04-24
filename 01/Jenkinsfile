@@ -1,0 +1,95 @@
+pipeline {
+    agent none
+    options {
+        timeout(time: 1, unit: 'HOURS')
+    }
+    parameters {
+        booleanParam(name: 'UNITTEST', defaultValue: true, description: 'Enable UnitTests?')
+    }
+
+    stages {
+        stage('Checkout') {
+            agent { label 'slave-group' }
+            steps {
+                git branch: 'main', url: 'https://gitlab.com/nishalkarthik/worldjava.git'
+            }
+        }
+
+        stage('PreCheck') {
+            agent { label 'slave-group' }
+            steps {
+                script {
+                    env.BUILDME = "yes"
+                }
+            }
+        }
+
+        stage('Build') {
+            when { environment name: 'BUILDME', value: 'yes' }
+            agent { label 'slave-group' }
+            steps {
+                script {
+                    if (params.UNITTEST) {
+                        unitstr = ""
+                    } else {
+                        unitstr = "-Dmaven.test.skip=true"
+                    }
+
+                    echo "Building jar Component ..."
+                    dir("./samplejar") {
+                        sh "mvn clean package ${unitstr}"
+                    }
+                }
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            when { expression { params.UNITTEST && env.BUILDME == 'yes' } }
+            agent { label 'slave-group' }
+            steps {
+                script {
+                    withSonarQubeEnv('sonar-new') {
+                        def scannerHome = tool 'sonar-scanner'
+                        def scannerCmd = "${scannerHome}/bin/sonar-scanner"
+                        sh "${scannerCmd} -Dsonar.projectKey=wetech -Dsonar.projectName=wetech -Dsonar.sources=samplejar/src -Dsonar.java.binaries=samplejar/target/classes -Dsonar.jacoco.reportPaths=samplejar/target/coverage-reports/jacoco-unit.exe"
+                    }
+                }
+            }
+        }
+        stage('Deploy to Nexus') {
+            agent {label 'slave-group'}
+            steps {
+                script {
+                    nexusArtifactUploader(
+                        credentialsId: 'nexus-uploader',
+                        groupId: 'newpipeline',
+                        nexusUrl: '34.217.87.219:8081', 
+                        nexusVersion: 'nexus3',
+                        protocol: 'http',
+                        repository: 'nishal',
+                        version: 'latest',
+                        artifacts: [
+                            [artifactId: 'samplejava', classifier: '', file: 'samplejar/target/demo-1.0-SNAPSHOT.jar', type: 'jar']
+                        ]
+                    )
+                }
+            }
+        }
+         stage('Build Image') 
+          {
+          agent { label 'slave-group' }
+			when {environment name: 'BUILDME', value: 'yes'}
+			steps{
+			script {
+			  docker.withRegistry( 'https://registry.hub.docker.com', 'dockerhub' ) {
+              /* Build Docker Image locally */
+              myImage = docker.build("nishal03/indiacicd:latest")
+
+              /* Push the container to the Registry */
+              myImage.push()
+          }
+      }
+    }
+  }
+    }
+}
