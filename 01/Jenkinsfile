@@ -2,6 +2,7 @@ pipeline {
     agent none
     options {
         timeout(time: 1, unit: 'HOURS')
+        buildDiscarder(logRotator(numToKeepStr: '2'))
     }
     parameters {
         booleanParam(name: 'UNITTEST', defaultValue: true, description: 'Enable UnitTests?')
@@ -9,14 +10,14 @@ pipeline {
 
     stages {
         stage('Checkout') {
-            agent { label 'slave-group' }
+            agent { label 'slave-group2' }
             steps {
-                git branch: 'main', url: 'https://gitlab.com/nishalkarthik/worldjava.git'
+                git branch: 'master', url: 'https://github.com/nishalkarthik/knote-java.git'
             }
         }
 
         stage('PreCheck') {
-            agent { label 'slave-group' }
+            agent { label 'slave-group2' }
             steps {
                 script {
                     env.BUILDME = "yes"
@@ -26,7 +27,7 @@ pipeline {
 
         stage('Build') {
             when { environment name: 'BUILDME', value: 'yes' }
-            agent { label 'slave-group' }
+            agent { label 'slave-group2' }
             steps {
                 script {
                     if (params.UNITTEST) {
@@ -36,7 +37,7 @@ pipeline {
                     }
 
                     echo "Building jar Component ..."
-                    dir("./samplejar") {
+                    dir("./01") {
                         sh "mvn clean package ${unitstr}"
                     }
                 }
@@ -45,51 +46,73 @@ pipeline {
 
         stage('SonarQube Analysis') {
             when { expression { params.UNITTEST && env.BUILDME == 'yes' } }
-            agent { label 'slave-group' }
+            agent { label 'slave-group2' }
             steps {
                 script {
                     withSonarQubeEnv('sonar-new') {
                         def scannerHome = tool 'sonar-scanner'
                         def scannerCmd = "${scannerHome}/bin/sonar-scanner"
-                        sh "${scannerCmd} -Dsonar.projectKey=wetech -Dsonar.projectName=wetech -Dsonar.sources=samplejar/src -Dsonar.java.binaries=samplejar/target/classes -Dsonar.jacoco.reportPaths=samplejar/target/coverage-reports/jacoco-unit.exe"
+                        sh "${scannerCmd} -Dsonar.projectKey=nishal -Dsonar.projectName=nishal -Dsonar.sources=01/src -Dsonar.java.binaries=01/target/classes"
                     }
                 }
             }
         }
         stage('Deploy to Nexus') {
-            agent {label 'slave-group'}
+            agent {label 'slave-group2'}
             steps {
                 script {
                     nexusArtifactUploader(
-                        credentialsId: 'nexus-uploader',
+                        credentialsId: 'nexus-cred',
                         groupId: 'newpipeline',
-                        nexusUrl: '34.217.87.219:8081', 
+                        nexusUrl: '54.214.109.206:8081', 
                         nexusVersion: 'nexus3',
                         protocol: 'http',
                         repository: 'nishal',
                         version: 'latest',
                         artifacts: [
-                            [artifactId: 'samplejava', classifier: '', file: 'samplejar/target/demo-1.0-SNAPSHOT.jar', type: 'jar']
+                            [artifactId: 'knotejava', classifier: '', file: '01/target/knote-java-1.0.0.jar', type: 'jar']
                         ]
                     )
                 }
             }
         }
-         stage('Build Image') 
+       stage('Build and Push to Docker Hub') {
+    agent { label 'slave-group2' }
+    when { environment name: 'BUILDME', value: 'yes' }
+    steps {
+        script {
+            def dockerImageTag = "nishal03/javaimage:${env.BUILD_ID}" //build image with jenkins BUILD_ID for dynamic tagging so that not to update tagname everytime
+
+            dir("./01") {
+                // Authenticate with Docker Hub
+                withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DOCKERHUB_USERNAME', passwordVariable: 'DOCKERHUB_PASSWORD')]) {
+                    sh "docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_PASSWORD"
+
+                    // Build Docker Image locally with the dynamic tag
+                    sh "docker build -t $dockerImageTag ."
+
+                    // Push the container to Docker Hub
+                    sh "docker push $dockerImageTag"
+                }
+            }
+        }
+    }
+}
+stage('Deploy Kubernates') 
           {
-          agent { label 'slave-group' }
+          agent { label 'slave-group2' }
 			when {environment name: 'BUILDME', value: 'yes'}
 			steps{
 			script {
-			  docker.withRegistry( 'https://registry.hub.docker.com', 'dockerhub' ) {
-              /* Build Docker Image locally */
-              myImage = docker.build("nishal03/indiacicd:latest")
-
-              /* Push the container to the Registry */
-              myImage.push()
+			    def buildId = sh(script: 'echo $BUILD_ID', returnStdout: true).trim()  // Assume $BUILD_ID is the Jenkins buildId
+			    sh "sed -i 's|nishal03/javaimage:latest|nishal03/javaimage:${buildId}|g' ./01/javadeployment.yaml" //injecting variable buildID into yaml file
+			    dir("./01") {
+			  
+			  sh 'kubectl apply -f mongodb.yaml'
+			  sh 'kubectl apply -f javadeployment.yaml'
+			  }
+			}
           }
-      }
+         } 
     }
-  }
-    }
-}
+ }
