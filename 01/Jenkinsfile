@@ -4,7 +4,7 @@ pipeline {
         stage('Print Message') {
             steps {
                 // Use the sh step to execute a shell command that prints "Hello Hii"
-                sh 'echo "Hello Hii"'
+                sh 'mkdir newlyyy'
             }
         }
     }
