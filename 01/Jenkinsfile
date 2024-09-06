@@ -1,10 +1,14 @@
 pipeline {
-    agent { label 'slave' } // Use the agent with the label 'slave'
+    agent {
+        docker {
+            image 'maven:3.6.3-jdk-11' 
+            label 'slave'              
+        }
+    }
     stages {
-        stage('Print Message') {
+        stage('Build') {
             steps {
-                // Use the sh step to execute a shell command that prints "Hello Hii"
-                sh 'mkdir newlyyy'
+                sh 'echo "hi"' 
             }
         }
     }
