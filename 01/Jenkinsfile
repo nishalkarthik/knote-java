@@ -10,7 +10,7 @@ pipeline {
             steps {
                 sh 'ls -la' 
                 sh 'df -hT'
-                sh'cat ~/.bash_profile'
+                sh'echo $env'
             }
         }
     }
