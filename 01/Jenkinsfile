@@ -57,7 +57,7 @@ pipeline {
                 }
             }
         }
-        stage('Deploy to Nexus') {
+        stage('Release to Nexus') {
             agent {label 'slave-group2'}
             steps {
                 script {
