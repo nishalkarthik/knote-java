@@ -8,9 +8,7 @@ pipeline {
     stages {
         stage('Build') {
             steps {
-                sh ''' if params.env=="dev"
-                do echo "dev env is set"
-                done
+                sh 'ls -la'
             }
         }
     }
