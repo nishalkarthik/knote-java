@@ -9,6 +9,8 @@ pipeline {
         stage('Build') {
             steps {
                 sh 'ls -la'
+                sh 'cat /etc/os-release'
+                sh ' cat 01/Jenkinsfile
             }
         }
     }
