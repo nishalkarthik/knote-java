@@ -1,7 +1,6 @@
 pipeline {
+    agent any
     stages {
-        label 'any' 
-    }
         stage('Build') {
             steps {
                 sh 'ls -la'
