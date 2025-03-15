@@ -1,5 +1,7 @@
 pipeline {
     stages {
+        label 'any' 
+    }
         stage('Build') {
             steps {
                 sh 'ls -la'
